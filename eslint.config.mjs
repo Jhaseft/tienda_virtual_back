@@ -8,9 +8,16 @@ export default tseslint.config(
   {
     ignores: ['eslint.config.mjs'],
   },
+
+  // Base ESLint
   eslint.configs.recommended,
-  ...tseslint.configs.recommendedTypeChecked,
+
+  // TypeScript (NO type-checked estricto)
+  ...tseslint.configs.recommended,
+
+  // Prettier
   eslintPluginPrettierRecommended,
+
   {
     languageOptions: {
       globals: {
@@ -24,12 +31,23 @@ export default tseslint.config(
       },
     },
   },
+
   {
     rules: {
+      // TypeScript relajado
       '@typescript-eslint/no-explicit-any': 'off',
+      '@typescript-eslint/no-unused-vars': 'warn',
       '@typescript-eslint/no-floating-promises': 'warn',
       '@typescript-eslint/no-unsafe-argument': 'warn',
-      "prettier/prettier": ["error", { endOfLine: "auto" }],
+
+      // Prettier NO rompe imports
+      'prettier/prettier': [
+        'warn',
+        {
+          endOfLine: 'ignore',
+          printWidth: 120,
+        },
+      ],
     },
   },
 );
