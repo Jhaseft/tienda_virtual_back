@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { PrismaModule } from './prisma.module';
 import { WhatsappModule } from './whatsapp/whatsapp.module';
+import { MailModule } from './mail/mail.module';
 
 @Module({
   imports: [
@@ -13,6 +14,8 @@ import { WhatsappModule } from './whatsapp/whatsapp.module';
     PrismaModule,
     
     WhatsappModule,
+    
+    MailModule,
   ],
   controllers: [],
   providers: [],
