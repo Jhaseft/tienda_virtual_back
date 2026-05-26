@@ -1,8 +1,10 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
-import { PrismaModule } from './prisma.module';
-import { WhatsappModule } from './whatsapp/whatsapp.module';
+import { AuthModule } from './auth/auth.module';
 import { MailModule } from './mail/mail.module';
+import { PrismaModule } from './prisma.module';
+import { UsersModule } from './users/users.module';
+import { WhatsappModule } from './whatsapp/whatsapp.module';
 
 @Module({
   imports: [
@@ -10,12 +12,11 @@ import { MailModule } from './mail/mail.module';
       isGlobal: true,
       envFilePath: '.env',
     }),
-    
     PrismaModule,
-    
     WhatsappModule,
-    
     MailModule,
+    AuthModule,
+    UsersModule,
   ],
   controllers: [],
   providers: [],

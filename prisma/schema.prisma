@@ -63,7 +63,7 @@ enum SubscriptionStatus {
 
 model User {
   id                   String              @id @default(uuid())
-  phoneNumber          String              @unique
+  phoneNumber          String?             @unique
   email                String?             @unique
   googleId             String?             @unique
   password             String?
