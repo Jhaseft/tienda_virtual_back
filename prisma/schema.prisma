@@ -166,6 +166,7 @@ model Category {
   id       String    @id @default(uuid())
   name     String    @unique
   iconUrl  String?
+  iconPublicId String?
   products Product[]
 
   @@map("categories")
