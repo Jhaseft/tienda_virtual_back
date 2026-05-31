@@ -3,6 +3,7 @@ import { ConfigModule } from '@nestjs/config';
 import { AuthModule } from './auth/auth.module';
 import { ExplorarTiendaModule } from './explorarTienda/explorarTienda.module';
 import { MailModule } from './mail/mail.module';
+import { OrdersModule } from './orders/orders.module';
 import { PrismaModule } from './prisma.module';
 import { UsersModule } from './users/users.module';
 import { WhatsappModule } from './whatsapp/whatsapp.module';
@@ -19,6 +20,7 @@ import { WhatsappModule } from './whatsapp/whatsapp.module';
     AuthModule,
     UsersModule,
     ExplorarTiendaModule,
+    OrdersModule,
   ],
   controllers: [],
   providers: [],
