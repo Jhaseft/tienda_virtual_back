@@ -10,9 +10,7 @@ async function bootstrap() {
   // Obtener el ConfigService
   const configService = app.get(ConfigService);
   const port = configService.get<number>('PORT') ?? 4000;
-  const frontendUrl = (
-    configService.get<string>('FRONTEND_URL') ?? 'http://localhost:3000'
-  ).replace(/\/$/, '');
+  const frontendUrl = (configService.get<string>('FRONTEND_URL') ?? 'http://localhost:3000').replace(/\/$/, '');
 
   // Middleware de logging
   app.use((req, res, next) => {
@@ -22,9 +20,7 @@ async function bootstrap() {
     res.on('finish', () => {
       const { statusCode } = res;
       const responseTime = Date.now() - startTime;
-      logger.log(
-        `${method} ${originalUrl} ${statusCode} - ${responseTime}ms`,
-      );
+      logger.log(`${method} ${originalUrl} ${statusCode} - ${responseTime}ms`);
     });
 
     next();
@@ -41,7 +37,7 @@ async function bootstrap() {
   });
 
   // Validación global mejorada
-  app.useGlobalPipes( 
+  app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
       forbidNonWhitelisted: true,
@@ -53,15 +49,15 @@ async function bootstrap() {
     .setTitle('API REST')
     .setDescription('Documentación de mi API de Login')
     .setVersion('1.0')
-     .addBearerAuth( 
-    {
-      type: 'http',
-      scheme: 'bearer',
-      bearerFormat: 'JWT',
-      in: 'header',
-    },
-    'access-token',       
-  )
+    .addBearerAuth(
+      {
+        type: 'http',
+        scheme: 'bearer',
+        bearerFormat: 'JWT',
+        in: 'header',
+      },
+      'access-token',
+    )
     .build();
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('docs', app, document);
@@ -71,6 +67,6 @@ async function bootstrap() {
   logger.log(`🌐 Cors habilitado para este desgraciao: ${frontendUrl}`);
   logger.log(`📚 Documentación disponible en http://localhost:${port}/docs`);
   //logger.log(`📱 Para tu celular usa: https://caja-negra-pacha-back.wkhbmg.easypanel.host:${port}`);
-  logger.log(`📱 Para tu celular usa: http://192.168.100.9:${port}`)
+  logger.log(`📱 Para tu celular usa: http://192.168.100.9:${port}`);
 }
 void bootstrap();

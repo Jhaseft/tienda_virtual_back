@@ -4,7 +4,7 @@ import { ExplorarTiendaService } from './explorarTienda.service';
 import { PublicExplorarTiendaService } from './public-explorarTienda.service';
 
 @Module({
-    controllers: [ExplorarTiendaController],
-    providers: [ExplorarTiendaService, PublicExplorarTiendaService],
+  controllers: [ExplorarTiendaController],
+  providers: [ExplorarTiendaService, PublicExplorarTiendaService],
 })
-export class ExplorarTiendaModule { }
+export class ExplorarTiendaModule {}

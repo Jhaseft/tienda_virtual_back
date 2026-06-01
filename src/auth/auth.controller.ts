@@ -1,11 +1,4 @@
-import {
-  Body,
-  Controller,
-  HttpCode,
-  HttpStatus,
-  Post,
-  UseGuards,
-} from '@nestjs/common';
+import { Body, Controller, HttpCode, HttpStatus, Post, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import type { JwtUser } from '../common/decorators/current-user.decorator';
@@ -48,10 +41,7 @@ export class AuthController {
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth('access-token')
   @ApiOperation({ summary: 'Completar perfil de usuario Google (nombre + teléfono)' })
-  completeProfile(
-    @CurrentUser() user: JwtUser,
-    @Body() dto: CompleteProfileDto,
-  ) {
+  completeProfile(@CurrentUser() user: JwtUser, @Body() dto: CompleteProfileDto) {
     return this.authService.completeProfile(user.userId, dto);
   }
 

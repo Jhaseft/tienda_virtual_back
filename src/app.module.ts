@@ -1,10 +1,15 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { AuthModule } from './auth/auth.module';
+import { CustomersModule } from './customers/customers.module';
 import { ExplorarTiendaModule } from './explorarTienda/explorarTienda.module';
 import { MailModule } from './mail/mail.module';
 import { OrdersModule } from './orders/orders.module';
 import { PrismaModule } from './prisma.module';
+import { ProductsModule } from './products/products.module';
+import { StatsModule } from './stats/stats.module';
+import { StoresModule } from './stores/stores.module';
+import { UploadsModule } from './uploads/uploads.module';
 import { UsersModule } from './users/users.module';
 import { WhatsappModule } from './whatsapp/whatsapp.module';
 
@@ -21,6 +26,11 @@ import { WhatsappModule } from './whatsapp/whatsapp.module';
     UsersModule,
     ExplorarTiendaModule,
     OrdersModule,
+    CustomersModule,
+    ProductsModule,
+    StatsModule,
+    StoresModule,
+    UploadsModule,
   ],
   controllers: [],
   providers: [],

@@ -72,9 +72,7 @@ export class UsersService {
       }),
     ]);
 
-    const products = favoriteRecords
-      .map((r) => r.product)
-      .filter((p): p is NonNullable<typeof p> => p !== null);
+    const products = favoriteRecords.map((r) => r.product).filter((p): p is NonNullable<typeof p> => p !== null);
 
     const stores = followedStoreRecords.map((r) => r.store);
 
