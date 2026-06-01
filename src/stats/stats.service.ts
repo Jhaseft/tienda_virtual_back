@@ -9,6 +9,64 @@ const VALID_SALES_STATUSES: OrderStatus[] = [OrderStatus.PAID, OrderStatus.SHIPP
 export class StatsService {
   constructor(private readonly prisma: PrismaService) {}
 
+  async getDashboard(userId: string) {
+    const store = await this.getOwnedStore(userId);
+
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+
+    const LOW_STOCK_THRESHOLD = 5;
+
+    const [
+      todayOrders,
+      totalProducts,
+      totalOrders,
+      lowStockCount,
+      totalCustomers,
+      storeOwner,
+    ] = await Promise.all([
+      this.prisma.order.findMany({
+        where: {
+          storeId: store.id,
+          status: { in: VALID_SALES_STATUSES },
+          createdAt: { gte: todayStart },
+        },
+        select: { total: true },
+      }),
+      this.prisma.product.count({
+        where: { storeId: store.id, isVisible: true, isAvailable: true },
+      }),
+      this.prisma.order.count({
+        where: { storeId: store.id },
+      }),
+      this.prisma.product.count({
+        where: { storeId: store.id, stock: { lte: LOW_STOCK_THRESHOLD }, isAvailable: true },
+      }),
+      this.prisma.order.groupBy({
+        by: ['clientId'],
+        where: { storeId: store.id },
+      }).then((r) => r.length),
+      this.prisma.store.findUnique({
+        where: { id: store.id },
+        select: { name: true, owner: { select: { firstName: true } } },
+      }),
+    ]);
+
+    return {
+      ownerName: storeOwner?.owner.firstName ?? null,
+      storeName: storeOwner?.name ?? null,
+      storeId: store.id,
+      salesToday: {
+        total: todayOrders.reduce((acc, o) => acc + o.total, 0),
+        count: todayOrders.length,
+      },
+      totalProducts,
+      totalOrders,
+      lowStockCount,
+      totalCustomers,
+    };
+  }
+
   async getAdminStats(userId: string, period: StatsPeriod) {
     const store = await this.getOwnedStore(userId);
     const now = new Date();

@@ -18,4 +18,10 @@ export class StatsController {
   getAdminStats(@CurrentUser() user: JwtUser, @Query() query: StatsQueryDto) {
     return this.statsService.getAdminStats(user.userId, query.period);
   }
+
+  @Get('dashboard')
+  @ApiOperation({ summary: 'Datos del dashboard principal del vendedor' })
+  getDashboard(@CurrentUser() user: JwtUser) {
+    return this.statsService.getDashboard(user.userId);
+  }
 }
