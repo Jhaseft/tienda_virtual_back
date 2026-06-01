@@ -49,6 +49,7 @@ export class CustomersService {
             lastName: true,
             phoneNumber: true,
             email: true,
+            avatarUrl: true,
           },
         },
       },
@@ -62,6 +63,7 @@ export class CustomersService {
         name: string;
         phoneNumber: string | null;
         email: string | null;
+        avatarUrl: string | null;
         totalOrders: number;
         totalSpent: number;
         lastOrderAt: Date | null;
@@ -81,6 +83,7 @@ export class CustomersService {
           name,
           phoneNumber: client.phoneNumber ?? null,
           email: client.email ?? null,
+          avatarUrl: client.avatarUrl ?? null,
           totalOrders: 1,
           totalSpent: canAddToTotal ? order.total : 0,
           lastOrderAt: order.createdAt,

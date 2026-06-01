@@ -176,6 +176,7 @@ export class OrdersService {
               lastName: true,
               phoneNumber: true,
               email: true,
+              avatarUrl: true,
             },
           },
           items: {
@@ -212,6 +213,7 @@ export class OrdersService {
             lastName: true,
             phoneNumber: true,
             email: true,
+            avatarUrl: true,
           },
         },
         items: {
