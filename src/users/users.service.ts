@@ -13,6 +13,7 @@ const USER_SELECT = {
   isProfileComplete: true,
   notificationsEnabled: true,
   createdAt: true,
+  store: { select: { id: true } },
 } as const;
 
 @Injectable()

@@ -1,11 +1,36 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma.service';
+import { CreateStoreDto } from './dto/create-store.dto';
 import { UpdatePaymentMethodDto } from './dto/update-payment-method.dto';
 import { UpdateStoreDto } from './dto/update-store.dto';
 
 @Injectable()
 export class StoresService {
   constructor(private readonly prisma: PrismaService) {}
+
+  async createStore(userId: string, dto: CreateStoreDto) {
+    const existing = await this.prisma.store.findUnique({ where: { ownerId: userId } });
+    if (existing) throw new BadRequestException('Ya tienes una tienda registrada');
+
+    const store = await this.prisma.store.create({
+      data: {
+        ownerId: userId,
+        name: dto.name,
+        whatsapp: dto.whatsapp,
+        description: dto.description,
+        address: dto.address,
+        logoUrl: dto.logoUrl,
+        logoPublicId: dto.logoPublicId,
+      },
+    });
+
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { role: 'VENDOR' },
+    });
+
+    return store;
+  }
 
   async getStoreSettings(userId: string) {
     return this.getMyStoreOrFail(userId);

@@ -1,8 +1,9 @@
-import { Body, Controller, Get, Patch, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Patch, Post, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import type { JwtUser } from '../common/decorators/current-user.decorator';
+import { CreateStoreDto } from './dto/create-store.dto';
 import { UpdatePaymentMethodDto } from './dto/update-payment-method.dto';
 import { UpdateStoreDto } from './dto/update-store.dto';
 import { StoresService } from './stores.service';
@@ -13,6 +14,12 @@ import { StoresService } from './stores.service';
 @Controller('stores')
 export class StoresController {
   constructor(private readonly storesService: StoresService) {}
+
+  @Post()
+  @ApiOperation({ summary: 'Crear mi tienda' })
+  createStore(@CurrentUser() user: JwtUser, @Body() dto: CreateStoreDto) {
+    return this.storesService.createStore(user.userId, dto);
+  }
 
   @Get('me')
   @ApiOperation({ summary: 'Obtener configuracion de mi tienda' })
