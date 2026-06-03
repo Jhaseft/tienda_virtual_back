@@ -24,14 +24,17 @@ enum OtpType {
 }
 
 model Plan {
-  id            String         @id @default(uuid())
-  name          String         @unique
-  price         Float
-  maxProducts   Int
-  maxPhotos     Int
-  canUseQR      Boolean        @default(true)
-  canShowRating Boolean        @default(true)
-  createdAt     DateTime       @default(now())
+  id                   String   @id @default(uuid())
+  name                 String   @unique
+  price                Float
+  maxProducts          Int
+  description          String?
+  canAddPaymentMethods Boolean  @default(false)
+  hasAiAgent           Boolean  @default(false)
+  hasAdvancedPayments  Boolean  @default(false)
+  isActive             Boolean  @default(true)
+  sortOrder            Int      @default(0)
+  createdAt            DateTime @default(now())
 
   subscriptions Subscription[]
 
@@ -39,19 +42,50 @@ model Plan {
 }
 
 model Subscription {
-  id        String             @id @default(uuid())
-  storeId   String             @unique
-  planId    String
-  status    SubscriptionStatus @default(ACTIVE)
-  startDate DateTime           @default(now())
-  endDate   DateTime
-  createdAt DateTime           @default(now())
-  updatedAt DateTime           @updatedAt
+  id          String             @id @default(uuid())
+  storeId     String             @unique
+  planId      String
+  status      SubscriptionStatus @default(ACTIVE)
+  startDate   DateTime           @default(now())
+  endDate     DateTime
+  trialEndsAt DateTime?
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
 
-  store     Store              @relation(fields: [storeId], references: [id])
-  plan      Plan               @relation(fields: [planId], references: [id])
+  store    Store                 @relation(fields: [storeId], references: [id])
+  plan     Plan                  @relation(fields: [planId], references: [id])
+  payments SubscriptionPayment[]
 
   @@map("subscriptions")
+}
+
+model SubscriptionPayment {
+  id                    String         @id @default(uuid())
+  subscriptionId        String
+  amount                Float
+  paymentChannel        PaymentChannel
+  stripePaymentIntentId String?
+  stripePaymentMethodId String?
+  planId                String?
+  banecoQrId            String?
+  qrExpiresAt           DateTime?
+  status                PaymentStatus  @default(PENDING)
+  createdAt             DateTime       @default(now())
+
+  subscription Subscription @relation(fields: [subscriptionId], references: [id])
+
+  @@map("subscription_payments")
+}
+
+enum PaymentChannel {
+  QR_BANCO
+  STRIPE
+}
+
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  FAILED
 }
 
 enum SubscriptionStatus {
@@ -62,28 +96,29 @@ enum SubscriptionStatus {
 }
 
 model User {
-  id                   String              @id @default(uuid())
-  phoneNumber          String?             @unique
-  email                String?             @unique
-  googleId             String?             @unique
+  id                   String   @id @default(uuid())
+  phoneNumber          String?  @unique
+  email                String?  @unique
+  googleId             String?  @unique
   password             String?
   firstName            String?
   lastName             String?
   avatarUrl            String?
   avatarPublicId       String?
-  role                 UserRole            @default(CLIENT)
-  isProfileComplete    Boolean             @default(false)
-  notificationsEnabled Boolean             @default(true)
-  createdAt            DateTime            @default(now())
-  updatedAt            DateTime            @updatedAt
+  role                 UserRole @default(CLIENT)
+  isProfileComplete    Boolean  @default(false)
+  notificationsEnabled Boolean  @default(true)
+  stripeCustomerId     String?
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
 
-  store                Store?
-  orders               Order[]
-  favorites            Favorite[]
-  addresses            Address[]
-  paymentMethods       UserPaymentMethod[]
-  reviews              Review[]
-  following            StoreFollower[]
+  store          Store?
+  orders         Order[]
+  favorites      Favorite[]
+  addresses      Address[]
+  paymentMethods UserPaymentMethod[]
+  reviews        Review[]
+  following      StoreFollower[]
 
   @@map("users")
 }
@@ -95,8 +130,8 @@ enum UserRole {
 }
 
 model Store {
-  id              String               @id @default(uuid())
-  ownerId         String               @unique
+  id              String   @id @default(uuid())
+  ownerId         String   @unique
   name            String
   storeType       String?
   description     String?
@@ -107,21 +142,22 @@ model Store {
   address         String?
   city            String?
   whatsapp        String?
-  isOpen          Boolean              @default(true)
-  rating          Float                @default(0)
-  totalReviews    Int                  @default(0)
-  totalSales      Int                  @default(0)
-  createdAt       DateTime             @default(now())
-  updatedAt       DateTime             @updatedAt
+  trialEndsAt     DateTime?
+  isOpen          Boolean  @default(true)
+  rating          Float    @default(0)
+  totalReviews    Int      @default(0)
+  totalSales      Int      @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
-  owner           User                 @relation(fields: [ownerId], references: [id])
-  subscription    Subscription?
-  products        Product[]
-  orders          Order[]
-  favorites       Favorite[]
-  followers       StoreFollower[]
-  paymentMethods  StorePaymentMethod[]
-  reviews         Review[]
+  owner          User                 @relation(fields: [ownerId], references: [id])
+  subscription   Subscription?
+  products       Product[]
+  orders         Order[]
+  favorites      Favorite[]
+  followers      StoreFollower[]
+  paymentMethods StorePaymentMethod[]
+  reviews        Review[]
 
   @@map("stores")
 }
@@ -132,8 +168,8 @@ model StoreFollower {
   storeId   String
   createdAt DateTime @default(now())
 
-  user      User     @relation(fields: [userId], references: [id])
-  store     Store    @relation(fields: [storeId], references: [id])
+  user  User  @relation(fields: [userId], references: [id])
+  store Store @relation(fields: [storeId], references: [id])
 
   @@unique([userId, storeId])
   @@map("store_followers")
@@ -149,7 +185,7 @@ model StorePaymentMethod {
   qrImageUrl      String?
   qrImagePublicId String?
 
-  store           Store       @relation(fields: [storeId], references: [id])
+  store Store @relation(fields: [storeId], references: [id])
 
   @@map("store_payment_methods")
 }
@@ -163,58 +199,58 @@ enum PaymentType {
 }
 
 model Category {
-  id       String    @id @default(uuid())
-  name     String    @unique
-  iconUrl  String?
+  id           String    @id @default(uuid())
+  name         String    @unique
+  iconUrl      String?
   iconPublicId String?
-  products Product[]
+  products     Product[]
 
   @@map("categories")
 }
 
 model Product {
-  id          String         @id @default(uuid())
+  id          String   @id @default(uuid())
   storeId     String
   categoryId  String?
   name        String
   description String?
   price       Float
-  stock       Int            @default(0)
-  isAvailable Boolean        @default(true)
-  isVisible   Boolean        @default(true)
-  createdAt   DateTime       @default(now())
-  updatedAt   DateTime       @updatedAt
+  stock       Int      @default(0)
+  isAvailable Boolean  @default(true)
+  isVisible   Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
-  store       Store          @relation(fields: [storeId], references: [id])
-  category    Category?      @relation(fields: [categoryId], references: [id])
-  photos      ProductPhoto[]
-  sizes       ProductSize[]
-  colors      ProductColor[]
-  orderItems  OrderItem[]
-  favorites   Favorite[]
+  store      Store          @relation(fields: [storeId], references: [id])
+  category   Category?      @relation(fields: [categoryId], references: [id])
+  photos     ProductPhoto[]
+  sizes      ProductSize[]
+  colors     ProductColor[]
+  orderItems OrderItem[]
+  favorites  Favorite[]
 
   @@map("products")
 }
 
 model ProductPhoto {
-  id        String  @id @default(uuid())
+  id        String @id @default(uuid())
   productId String
   url       String
   publicId  String
-  order     Int     @default(0)
+  order     Int    @default(0)
 
-  product   Product @relation(fields: [productId], references: [id])
+  product Product @relation(fields: [productId], references: [id])
 
   @@map("product_photos")
 }
 
 model ProductSize {
-  id        String  @id @default(uuid())
+  id        String @id @default(uuid())
   productId String
   size      String
-  stock     Int     @default(0)
+  stock     Int    @default(0)
 
-  product   Product @relation(fields: [productId], references: [id])
+  product Product @relation(fields: [productId], references: [id])
 
   @@map("product_sizes")
 }
@@ -226,7 +262,7 @@ model ProductColor {
   hexCode   String?
   stock     Int     @default(0)
 
-  product   Product @relation(fields: [productId], references: [id])
+  product Product @relation(fields: [productId], references: [id])
 
   @@map("product_colors")
 }
@@ -249,10 +285,10 @@ model Order {
   createdAt         DateTime    @default(now())
   updatedAt         DateTime    @updatedAt
 
-  client            User        @relation(fields: [clientId], references: [id])
-  store             Store       @relation(fields: [storeId], references: [id])
-  items             OrderItem[]
-  review            Review?
+  client User        @relation(fields: [clientId], references: [id])
+  store  Store       @relation(fields: [storeId], references: [id])
+  items  OrderItem[]
+  review Review?
 
   @@map("orders")
 }
@@ -266,8 +302,8 @@ model OrderItem {
   quantity  Int
   unitPrice Float
 
-  order     Order   @relation(fields: [orderId], references: [id])
-  product   Product @relation(fields: [productId], references: [id])
+  order   Order   @relation(fields: [orderId], references: [id])
+  product Product @relation(fields: [productId], references: [id])
 
   @@map("order_items")
 }
@@ -290,9 +326,9 @@ model Review {
   comment   String?
   createdAt DateTime @default(now())
 
-  store     Store    @relation(fields: [storeId], references: [id])
-  client    User     @relation(fields: [clientId], references: [id])
-  order     Order?   @relation(fields: [orderId], references: [id])
+  store  Store  @relation(fields: [storeId], references: [id])
+  client User   @relation(fields: [clientId], references: [id])
+  order  Order? @relation(fields: [orderId], references: [id])
 
   @@map("reviews")
 }
@@ -304,9 +340,9 @@ model Favorite {
   storeId   String?
   createdAt DateTime @default(now())
 
-  user      User     @relation(fields: [userId], references: [id])
-  product   Product? @relation(fields: [productId], references: [id])
-  store     Store?   @relation(fields: [storeId], references: [id])
+  user    User     @relation(fields: [userId], references: [id])
+  product Product? @relation(fields: [productId], references: [id])
+  store   Store?   @relation(fields: [storeId], references: [id])
 
   @@unique([userId, productId])
   @@unique([userId, storeId])
@@ -322,7 +358,7 @@ model Address {
   reference String?
   isDefault Boolean @default(false)
 
-  user      User    @relation(fields: [userId], references: [id])
+  user User @relation(fields: [userId], references: [id])
 
   @@map("addresses")
 }
@@ -335,7 +371,17 @@ model UserPaymentMethod {
   details   String?
   isDefault Boolean     @default(false)
 
-  user      User        @relation(fields: [userId], references: [id])
+  user User @relation(fields: [userId], references: [id])
 
   @@map("user_payment_methods")
+}
+
+model SystemConfig {
+  id               String   @id @default("1")
+  trialDays        Int      @default(15)
+  trialMaxProducts Int      @default(8)
+  exchangeRateBob  Float    @default(6.90)
+  updatedAt        DateTime @updatedAt
+
+  @@map("system_config")
 }

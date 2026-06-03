@@ -9,6 +9,11 @@ import { PrismaModule } from './prisma.module';
 import { ProductsModule } from './products/products.module';
 import { StatsModule } from './stats/stats.module';
 import { StoresModule } from './stores/stores.module';
+import { PlansModule } from './plans/plans.module';
+import { SubscriptionsModule } from './subscriptions/subscriptions.module';
+import { StripeModule } from './stripe/stripe.module';
+import { BanecoQrModule } from './baneco-qr/baneco-qr.module';
+import { SystemConfigModule } from './system-config/system-config.module';
 import { UploadsModule } from './uploads/uploads.module';
 import { UsersModule } from './users/users.module';
 import { WhatsappModule } from './whatsapp/whatsapp.module';
@@ -30,6 +35,11 @@ import { WhatsappModule } from './whatsapp/whatsapp.module';
     ProductsModule,
     StatsModule,
     StoresModule,
+    PlansModule,
+    SystemConfigModule,
+    SubscriptionsModule,
+    StripeModule,
+    BanecoQrModule,
     UploadsModule,
   ],
   controllers: [],

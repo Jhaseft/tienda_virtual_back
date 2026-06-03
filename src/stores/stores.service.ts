@@ -1,16 +1,24 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma.service';
+import { SystemConfigService } from '../system-config/system-config.service';
 import { CreateStoreDto } from './dto/create-store.dto';
 import { UpdatePaymentMethodDto } from './dto/update-payment-method.dto';
 import { UpdateStoreDto } from './dto/update-store.dto';
 
 @Injectable()
 export class StoresService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly systemConfig: SystemConfigService,
+  ) {}
 
   async createStore(userId: string, dto: CreateStoreDto) {
     const existing = await this.prisma.store.findUnique({ where: { ownerId: userId } });
     if (existing) throw new BadRequestException('Ya tienes una tienda registrada');
+
+    const trialDays = await this.systemConfig.getTrialDays();
+    const trialEndsAt = new Date();
+    trialEndsAt.setDate(trialEndsAt.getDate() + trialDays);
 
     const store = await this.prisma.store.create({
       data: {
@@ -21,6 +29,7 @@ export class StoresService {
         address: dto.address,
         logoUrl: dto.logoUrl,
         logoPublicId: dto.logoPublicId,
+        trialEndsAt,
       },
     });
 
@@ -32,10 +41,12 @@ export class StoresService {
     return store;
   }
 
+  // método para obtener la configuración de la tienda del usuario autenticado, si el usuario no tiene una tienda lanza una excepción de NotFound
   async getStoreSettings(userId: string) {
     return this.getMyStoreOrFail(userId);
   }
 
+  // método para actualizar la configuración de la tienda del usuario autenticado, solo actualiza los campos que se envían en el DTO, si el usuario no tiene una tienda lanza una excepción de NotFound
   async updateStoreSettings(userId: string, dto: UpdateStoreDto) {
     const store = await this.getMyStoreOrFail(userId);
 

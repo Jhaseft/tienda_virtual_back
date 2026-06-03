@@ -1,6 +1,7 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma.service';
+import { SystemConfigService } from '../system-config/system-config.service';
 import { ProductQueryDto } from './dto/product-query.dto';
 import { CreateProductDto } from './dto/create-product.dto';
 import { SetProductOptionsDto } from './dto/set-product-options.dto';
@@ -10,8 +11,12 @@ const LOW_STOCK_THRESHOLD = 5;
 
 @Injectable()
 export class ProductsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly systemConfig: SystemConfigService,
+  ) {}
 
+  // método para obtener el inventario de productos de la tienda del usuario autenticado, con paginación y búsqueda por nombre o descripción, solo devuelve los productos de la tienda del usuario, si el usuario no tiene una tienda lanza una excepción de NotFound
   async getAdminInventory(userId: string, query: ProductQueryDto) {
     const store = await this.getOwnedStore(userId);
     const page = query.page ?? 1;
@@ -64,8 +69,10 @@ export class ProductsService {
     };
   }
 
+  // método para crear un nuevo producto en la tienda del usuario autenticado, verifica que el usuario tenga una tienda y que no haya alcanzado el límite de productos según su plan o periodo de prueba, si el usuario no tiene una tienda lanza una excepción de NotFound, si ha alcanzado el límite de productos lanza una excepción de Forbidden
   async createProduct(userId: string, dto: CreateProductDto) {
     const store = await this.getOwnedStore(userId);
+    await this.checkProductLimit(store.id);
 
     const product = await this.prisma.product.create({
       data: {
@@ -112,6 +119,7 @@ export class ProductsService {
     return { message: 'Producto eliminado correctamente' };
   }
 
+  // METODOS PRIVADOS PARA VALIDACIONES Y OBTENER LA TIENDA DEL USUARIO
   async updateProduct(userId: string, productId: string, dto: UpdateProductDto) {
     const store = await this.getOwnedStore(userId);
 
@@ -144,6 +152,7 @@ export class ProductsService {
     return updated;
   }
 
+  // MERODO PARA OBTENER UN PRODUCTO POR ID SOLO DE LA TIENDA DEL USUARIO AUTENTICADO, SI EL USUARIO NO TIENE UNA TIENDA O EL PRODUCTO NO PERTENECE A SU TIENDA LANZA UNA EXCEPCIÓN DE NOTFOUND
   async getAdminProductById(userId: string, productId: string) {
     const store = await this.getOwnedStore(userId);
 
@@ -163,6 +172,7 @@ export class ProductsService {
     return product;
   }
 
+  // METODO PARA OBTENER O CREAR UN CUSTOMER EN STRIPE A PARTIR DEL USUARIO, SI EL USUARIO YA TIENE UN stripeCustomerId, verifica que el cliente exista en Stripe y no esté eliminado, si no existe o está eliminado borra el stripeCustomerId del usuario y crea uno nuevo, si el usuario no tiene un stripeCustomerId crea uno nuevo, devuelve el stripeCustomerId válido
   async setProductOptions(userId: string, productId: string, dto: SetProductOptionsDto) {
     const store = await this.getOwnedStore(userId);
 
@@ -202,6 +212,7 @@ export class ProductsService {
     return updated;
   }
 
+  // METODO PARA ACTUALIZAR EL STOCK DE UN PRODUCTO, SOLO DE LA TIENDA DEL USUARIO AUTENTICADO, SI EL USUARIO NO TIENE UNA TIENDA O EL PRODUCTO NO PERTENECE A SU TIENDA LANZA UNA EXCEPCIÓN DE NOTFOUND
   async updateProductStock(userId: string, productId: string, stock: number) {
     const store = await this.getOwnedStore(userId);
 
@@ -233,6 +244,40 @@ export class ProductsService {
     };
   }
 
+  // METODO PARA ELIMINAR UN PRODUCTO DE LA TIENDA DEL USUARIO AUTENTICADO, SI EL USUARIO NO TIENE UNA TIENDA O EL PRODUCTO NO PERTENECE A SU TIENDA LANZA UNA EXCEPCIÓN DE NOTFOUND, ELIMINA TAMBIÉN LAS TALLAS, COLORES, FOTOS, FAVORITOS Y ITEMS DE ORDEN ASOCIADOS AL PRODUCTO
+  private async checkProductLimit(storeId: string) {
+    const [productsUsed, subscription, store, config] = await Promise.all([
+      this.prisma.product.count({ where: { storeId } }),
+      this.prisma.subscription.findFirst({
+        where: { storeId, status: 'ACTIVE' },
+        include: { plan: { select: { maxProducts: true } } },
+      }),
+      this.prisma.store.findUnique({ where: { id: storeId }, select: { trialEndsAt: true } }),
+      this.systemConfig.getConfig(),
+    ]);
+
+    if (subscription) {
+      const limit = subscription.plan.maxProducts;
+      if (limit !== -1 && productsUsed >= limit) {
+        throw new ForbiddenException(`Límite de tu plan alcanzado (${limit} productos)`);
+      }
+      return;
+    }
+
+    const now = new Date();
+    if (store?.trialEndsAt && store.trialEndsAt > now) {
+      if (productsUsed >= config.trialMaxProducts) {
+        throw new ForbiddenException(
+          `Límite del periodo de prueba alcanzado (${config.trialMaxProducts} productos). Elige un plan para continuar.`,
+        );
+      }
+      return;
+    }
+
+    throw new ForbiddenException('Tu periodo de prueba ha vencido. Elige un plan para continuar.');
+  }
+
+  // METODO PARA OBTENER LA TIENDA ASOCIADA AL USUARIO AUTENTICADO, SI NO TIENE UNA TIENDA LANZA UNA EXCEPCIÓN DE NOTFOUND, ESTE MÉTODO SE USA EN VARIOS LUGARES DEL SERVICIO PARA VALIDAR QUE EL USUARIO TIENE UNA TIENDA Y OBTENER SU ID
   private async getOwnedStore(userId: string) {
     const store = await this.prisma.store.findUnique({
       where: { ownerId: userId },
