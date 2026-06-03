@@ -111,7 +111,11 @@ export class StripeService {
     const endDate = new Date();
     endDate.setDate(endDate.getDate() + 30);
 
-    // Crear o actualizar la Subscription y registrar el pago en una sola transacción
+    const plan = await this.prisma.plan.findUnique({
+      where: { id: planId },
+      select: { maxProducts: true, price: true },
+    });
+
     await this.prisma.$transaction(async (tx) => {
       const subscription = await tx.subscription.upsert({
         where: { storeId },
@@ -130,7 +134,7 @@ export class StripeService {
         data: {
           subscriptionId: subscription.id,
           planId,
-          amount: 0,
+          amount: plan?.price ?? 0,
           paymentChannel: 'STRIPE',
           status: 'COMPLETED',
           stripePaymentIntentId: paymentIntentId,
@@ -138,10 +142,31 @@ export class StripeService {
       });
     });
 
+    await this.hideExcessProducts(storeId, plan?.maxProducts ?? -1);
     this.logger.log(`Suscripción activada vía Stripe storeId=${storeId} planId=${planId}`);
   }
 
   // método para manejar el evento de pago fallido de Stripe, si el evento es de tipo "payment_intent.payment_failed" y el propósito es "SUBSCRIPTION", actualiza el estado del pago a "FAILED"
+  private async hideExcessProducts(storeId: string, maxProducts: number) {
+    if (maxProducts === -1) return;
+
+    const products = await this.prisma.product.findMany({
+      where: { storeId, isVisible: true },
+      orderBy: { createdAt: 'asc' },
+      select: { id: true },
+    });
+
+    if (products.length <= maxProducts) return;
+
+    const toHide = products.slice(maxProducts).map((p) => p.id);
+    await this.prisma.product.updateMany({
+      where: { id: { in: toHide } },
+      data: { isVisible: false },
+    });
+
+    this.logger.log(`[PLAN] ${toHide.length} productos ocultados en storeId=${storeId} (límite=${maxProducts})`);
+  }
+
   async handlePaymentFailed(paymentIntentId: string, metadata?: Record<string, string>) {
     if ((metadata?.purpose ?? '').toUpperCase() !== 'SUBSCRIPTION') return;
     // No hay registro PENDING en BD — Stripe maneja el estado del intento fallido

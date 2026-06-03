@@ -9,6 +9,26 @@ export class BanecoQrService {
   constructor(private readonly prisma: PrismaService) {}
 
   // metodo para aplicar un pago recibido del webhook de Baneco, busca el pago pendiente asociado al qrId, si lo encuentra lo marca como COMPLETED y activa la suscripción asociada por 30 días, si no encuentra el pago o ya fue procesado, solo registra un warning en el log
+  private async hideExcessProducts(storeId: string, maxProducts: number) {
+    if (maxProducts === -1) return; // ilimitado
+
+    const products = await this.prisma.product.findMany({
+      where: { storeId, isVisible: true },
+      orderBy: { createdAt: 'asc' },
+      select: { id: true },
+    });
+
+    if (products.length <= maxProducts) return;
+
+    const toHide = products.slice(maxProducts).map((p) => p.id);
+    await this.prisma.product.updateMany({
+      where: { id: { in: toHide } },
+      data: { isVisible: false },
+    });
+
+    this.logger.log(`[PLAN] ${toHide.length} productos ocultados en storeId=${storeId} (límite=${maxProducts})`);
+  }
+
   async applyPayment(payment: PaymentQR) {
     const subPayment = await this.prisma.subscriptionPayment.findFirst({
       where: { banecoQrId: payment.qrId, status: 'PENDING' },
@@ -34,16 +54,18 @@ export class BanecoQrService {
     const endDate = new Date();
     endDate.setDate(endDate.getDate() + 30);
 
-    await this.prisma.subscription.update({
+    const subscription = await this.prisma.subscription.update({
       where: { id: subPayment.subscriptionId },
       data: {
         status: 'ACTIVE',
         startDate: new Date(),
         endDate,
-        // Asegura que el plan activado sea el del pago, no el último guardado
         ...(subPayment.planId ? { planId: subPayment.planId } : {}),
       },
+      include: { plan: true, store: { select: { id: true } } },
     });
+
+    await this.hideExcessProducts(subscription.store.id, subscription.plan.maxProducts);
 
     this.logger.log(`[WEBHOOK] Suscripción activada subscriptionId=${subPayment.subscriptionId} hasta ${endDate.toISOString().slice(0, 10)}`);
   }

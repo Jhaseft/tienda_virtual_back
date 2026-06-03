@@ -76,29 +76,47 @@ export class SubscriptionsService {
       }
     }
 
-    // Solo crear la Subscription si no existe — no modificar planId hasta que se confirme el pago
-    const subscription = await this.prisma.subscription.upsert({
-      where: { storeId: store.id },
-      update: {},
-      create: {
-        storeId: store.id,
-        planId,
-        status: 'PENDING',
-        startDate: new Date(),
-        endDate: new Date(),
-      },
-      select: { id: true },
-    });
+    // Crear Subscription y SubscriptionPayment en transacción atómica
+    const { subscription, payment } = await this.prisma.$transaction(async (tx) => {
+      const subscription = await tx.subscription.upsert({
+        where: { storeId: store.id },
+        update: {},
+        create: {
+          storeId: store.id,
+          planId,
+          status: 'PENDING',
+          startDate: new Date(),
+          endDate: new Date(),
+        },
+        select: { id: true },
+      });
 
-    const payment = await this.prisma.subscriptionPayment.create({
-      data: {
-        subscriptionId: subscription.id,
-        planId,
-        amount: plan.price,
-        paymentChannel: 'QR_BANCO',
-        status: 'PENDING',
-      },
-      select: { id: true },
+      // Verificar dentro de la transacción si ya existe un PENDING para este plan
+      const alreadyPending = await tx.subscriptionPayment.findFirst({
+        where: {
+          subscriptionId: subscription.id,
+          planId,
+          paymentChannel: 'QR_BANCO',
+          status: 'PENDING',
+          qrExpiresAt: { gt: new Date() },
+        },
+        select: { id: true, banecoQrId: true, qrExpiresAt: true },
+      });
+
+      if (alreadyPending) return { subscription, payment: alreadyPending, existing: true };
+
+      const payment = await tx.subscriptionPayment.create({
+        data: {
+          subscriptionId: subscription.id,
+          planId,
+          amount: plan.price,
+          paymentChannel: 'QR_BANCO',
+          status: 'PENDING',
+        },
+        select: { id: true },
+      });
+
+      return { subscription, payment, existing: false };
     });
 
     const qrExpiresAt = new Date();

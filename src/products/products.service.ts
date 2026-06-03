@@ -34,6 +34,7 @@ export class ProductsService {
             ],
           }
         : {}),
+      ...(query.isVisible !== undefined ? { isVisible: query.isVisible } : {}),
     };
 
     const [total, products] = await Promise.all([
@@ -125,9 +126,14 @@ export class ProductsService {
 
     const product = await this.prisma.product.findFirst({
       where: { id: productId, storeId: store.id },
-      select: { id: true },
+      select: { id: true, isVisible: true },
     });
     if (!product) throw new NotFoundException('Producto no encontrado');
+
+    // Si intenta publicar un producto oculto, verificar que no supere el límite del plan
+    if (dto.isVisible === true && !product.isVisible) {
+      await this.checkVisibleLimit(store.id);
+    }
 
     const updated = await this.prisma.product.update({
       where: { id: product.id },
@@ -244,7 +250,38 @@ export class ProductsService {
     };
   }
 
-  // METODO PARA ELIMINAR UN PRODUCTO DE LA TIENDA DEL USUARIO AUTENTICADO, SI EL USUARIO NO TIENE UNA TIENDA O EL PRODUCTO NO PERTENECE A SU TIENDA LANZA UNA EXCEPCIÓN DE NOTFOUND, ELIMINA TAMBIÉN LAS TALLAS, COLORES, FOTOS, FAVORITOS Y ITEMS DE ORDEN ASOCIADOS AL PRODUCTO
+  // METODO PARA VERIFICAR SI EL USUARIO PUEDE PUBLICAR UN PRODUCTO (isVisible=true) SEGÚN EL LÍMITE DE SU PLAN O PERIODO DE PRUEBA, SI EL USUARIO NO TIENE UNA TIENDA O EL PRODUCTO NO PERTENECE A SU TIENDA LANZA UNA EXCEPCIÓN DE NOTFOUND, SI EL USUARIO HA ALCANZADO EL LÍMITE DE PRODUCTOS VISIBLES LANZA UNA EXCEPCIÓN DE FORBIDDEN
+  private async checkVisibleLimit(storeId: string) {
+    const [visibleCount, subscription, store, config] = await Promise.all([
+      this.prisma.product.count({ where: { storeId, isVisible: true } }),
+      this.prisma.subscription.findFirst({
+        where: { storeId, status: 'ACTIVE' },
+        include: { plan: { select: { maxProducts: true } } },
+      }),
+      this.prisma.store.findUnique({ where: { id: storeId }, select: { trialEndsAt: true } }),
+      this.systemConfig.getConfig(),
+    ]);
+
+    if (subscription) {
+      const limit = subscription.plan.maxProducts;
+      if (limit !== -1 && visibleCount >= limit) {
+        throw new ForbiddenException(`Límite de productos visibles alcanzado (${limit}). Oculta otro producto primero.`);
+      }
+      return;
+    }
+
+    const now = new Date();
+    if (store?.trialEndsAt && store.trialEndsAt > now) {
+      if (visibleCount >= config.trialMaxProducts) {
+        throw new ForbiddenException(`Límite del periodo de prueba alcanzado (${config.trialMaxProducts}). Oculta otro producto primero.`);
+      }
+      return;
+    }
+
+    throw new ForbiddenException('Tu periodo de prueba ha vencido. Elige un plan para continuar.');
+  }
+
+  // METODO PARA VERIFICAR SI EL USUARIO HA ALCANZADO EL LÍMITE DE PRODUCTOS TOTALES (visibles e invisibles) SEGÚN SU PLAN O PERIODO DE PRUEBA, SI EL USUARIO NO TIENE UNA TIENDA LANZA UNA EXCEPCIÓN DE NOTFOUND, SI EL USUARIO HA ALCANZADO EL LÍMITE DE PRODUCTOS LANZA UNA EXCEPCIÓN DE FORBIDDEN
   private async checkProductLimit(storeId: string) {
     const [productsUsed, subscription, store, config] = await Promise.all([
       this.prisma.product.count({ where: { storeId } }),
