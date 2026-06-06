@@ -44,6 +44,13 @@ export class ExplorarTiendaController {
     return this.explorarService.getStoresByCategory(id);
   }
 
+  // RESOLVER SUBDOMINIO A ID DE TIENDA
+  @Get('tiendas/by-subdomain/:subdomain')
+  @ApiOperation({ summary: 'Resolver subdominio a id de tienda' })
+  getStoreIdBySubdomain(@Param('subdomain') subdomain: string) {
+    return this.explorarService.getStoreIdBySubdomain(subdomain);
+  }
+
   // OBTENER DETALLE DE UNA TIENDA
   @Get('tiendas/:id')
   @ApiOperation({ summary: 'Detalle completo de una tienda' })

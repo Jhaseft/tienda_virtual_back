@@ -48,7 +48,7 @@ export class StatsService {
       }).then((r) => r.length),
       this.prisma.store.findUnique({
         where: { id: store.id },
-        select: { name: true, owner: { select: { firstName: true } } },
+        select: { name: true, subdomain: true, owner: { select: { firstName: true } } },
       }),
     ]);
 
@@ -56,6 +56,7 @@ export class StatsService {
       ownerName: storeOwner?.owner.firstName ?? null,
       storeName: storeOwner?.name ?? null,
       storeId: store.id,
+      storeSubdomain: storeOwner?.subdomain ?? null,
       salesToday: {
         total: todayOrders.reduce((acc, o) => acc + o.total, 0),
         count: todayOrders.length,

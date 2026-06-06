@@ -132,6 +132,7 @@ enum UserRole {
 model Store {
   id              String   @id @default(uuid())
   ownerId         String   @unique
+  subdomain       String?  @unique
   name            String
   storeType       String?
   description     String?
