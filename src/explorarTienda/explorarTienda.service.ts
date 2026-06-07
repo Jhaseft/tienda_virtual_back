@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma.service';
 import { SearchExplorerDto } from './dto/search-explorer.dto';
 import { GetStoreProductsDto } from './dto/get-store-products.dto';
@@ -21,10 +21,11 @@ export class ExplorarTiendaService {
 
   // OBTENER TIENDAS RECOMENDADAS ORDENADAS POR RATING
   async getRecommendedStores() {
+    const now = new Date();
     return this.prisma.store.findMany({
       where: {
         isOpen: true,
-        subscription: { status: 'ACTIVE' },
+        OR: [{ trialEndsAt: { gt: now } }, { subscription: { status: 'ACTIVE' } }],
       },
       orderBy: { rating: 'desc' },
       take: 10,
@@ -60,6 +61,7 @@ export class ExplorarTiendaService {
       ],
     };
 
+    const now = new Date();
     const [stores, products, productTotal] = await Promise.all([
       this.prisma.store.findMany({
         where: {
@@ -69,6 +71,7 @@ export class ExplorarTiendaService {
             { storeType: { contains: term, mode: 'insensitive' } },
             { description: { contains: term, mode: 'insensitive' } },
           ],
+          AND: [{ OR: [{ trialEndsAt: { gt: now } }, { subscription: { status: 'ACTIVE' } }] }],
         },
         take: 5,
         select: {
@@ -160,10 +163,11 @@ export class ExplorarTiendaService {
 
   // OBTENER TIENDAS QUE TIENEN PRODUCTOS EN UNA CATEGORÍA
   async getStoresByCategory(categoryId: string) {
+    const now = new Date();
     return this.prisma.store.findMany({
       where: {
         isOpen: true,
-        subscription: { status: 'ACTIVE' },
+        OR: [{ trialEndsAt: { gt: now } }, { subscription: { status: 'ACTIVE' } }],
         products: {
           some: {
             categoryId,
@@ -214,17 +218,32 @@ export class ExplorarTiendaService {
         rating: true,
         totalReviews: true,
         totalSales: true,
+        trialEndsAt: true,
         _count: {
           select: { followers: true, products: true },
         },
         socialLinks: {
           select: { id: true, network: true, url: true },
         },
+        subscription: {
+          select: { status: true },
+        },
       },
     });
 
     if (!store) throw new NotFoundException('Tienda no encontrada');
-    return store;
+
+    const now = new Date();
+    const trialActive = store.trialEndsAt ? store.trialEndsAt > now : false;
+    const subscriptionActive = store.subscription?.status === 'ACTIVE';
+
+    if (!trialActive && !subscriptionActive) {
+      throw new ForbiddenException('Esta tienda no está disponible actualmente');
+    }
+
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { trialEndsAt: _t, subscription: _s, ...storeData } = store;
+    return storeData;
   }
 
   // OBTENER PRODUCTOS DE UNA TIENDA CON PAGINACIÓN
