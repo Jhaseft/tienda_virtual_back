@@ -206,6 +206,9 @@ export class ExplorarTiendaService {
         _count: {
           select: { followers: true, products: true },
         },
+        socialLinks: {
+          select: { id: true, network: true, url: true },
+        },
       },
     });
 

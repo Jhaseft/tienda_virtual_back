@@ -152,6 +152,58 @@ export class AuthService {
     return { token: this.generateToken(updated), user: this.sanitize(updated) };
   }
 
+  /* ── Recuperar contraseña: enviar código ── */
+  async forgotPassword(email: string) {
+    const user = await this.prisma.user.findUnique({ where: { email } });
+    if (!user) throw new NotFoundException('No existe una cuenta con ese correo');
+
+    const code = await this.createOtp(email, OtpType.EMAIL);
+    await this.mail.send6DigitCode(email, code);
+
+    return { message: 'Código de recuperación enviado al correo' };
+  }
+
+  /* ── Recuperar contraseña: solo verificar código (sin cambiar nada) ── */
+  async verifyForgotPasswordOtp(email: string, code: string) {
+    const otp = await this.prisma.otpCode.findFirst({
+      where: {
+        target: email,
+        code,
+        type: OtpType.EMAIL,
+        used: false,
+        expiresAt: { gt: new Date() },
+      },
+    });
+    if (!otp) throw new BadRequestException('Código inválido o expirado');
+    return { message: 'Código válido' };
+  }
+
+  /* ── Recuperar contraseña: verificar código y cambiar contraseña ── */
+  async resetPassword(email: string, code: string, newPassword: string) {
+    const otp = await this.prisma.otpCode.findFirst({
+      where: {
+        target: email,
+        code,
+        type: OtpType.EMAIL,
+        used: false,
+        expiresAt: { gt: new Date() },
+      },
+    });
+    if (!otp) throw new BadRequestException('Código inválido o expirado');
+
+    const user = await this.prisma.user.findUnique({ where: { email } });
+    if (!user) throw new NotFoundException('Usuario no encontrado');
+
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+    await Promise.all([
+      this.prisma.otpCode.update({ where: { id: otp.id }, data: { used: true } }),
+      this.prisma.user.update({ where: { id: user.id }, data: { password: hashedPassword } }),
+    ]);
+
+    return { message: 'Contraseña actualizada correctamente' };
+  }
+
   /* ── Reenviar OTP ── */
   async resendOtp(dto: ResendOtpDto) {
     const code = await this.createOtp(dto.target, dto.type);

@@ -1,8 +1,10 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma.service';
 import { SystemConfigService } from '../system-config/system-config.service';
+import { CreateSocialLinkDto } from './dto/create-social-link.dto';
 import { CreateStoreDto } from './dto/create-store.dto';
 import { UpdatePaymentMethodDto } from './dto/update-payment-method.dto';
+import { UpdateSocialLinkDto } from './dto/update-social-link.dto';
 import { UpdateStoreDto } from './dto/update-store.dto';
 
 @Injectable()
@@ -126,6 +128,7 @@ export class StoresService {
       where: storeId ? { id: storeId, ownerId: userId } : { ownerId: userId },
       include: {
         paymentMethods: true,
+        socialLinks: true,
         owner: {
           select: {
             id: true,
@@ -144,5 +147,37 @@ export class StoresService {
     }
 
     return store;
+  }
+
+  async addSocialLink(userId: string, dto: CreateSocialLinkDto) {
+    const store = await this.getMyStoreOrFail(userId);
+    return this.prisma.storeSocialLink.create({
+      data: { storeId: store.id, network: dto.network, url: dto.url },
+    });
+  }
+
+  async updateSocialLink(userId: string, linkId: string, dto: UpdateSocialLinkDto) {
+    const store = await this.getMyStoreOrFail(userId);
+    const link = await this.prisma.storeSocialLink.findFirst({
+      where: { id: linkId, storeId: store.id },
+    });
+    if (!link) throw new NotFoundException('Red social no encontrada');
+    return this.prisma.storeSocialLink.update({
+      where: { id: linkId },
+      data: {
+        ...(dto.network !== undefined ? { network: dto.network } : {}),
+        ...(dto.url !== undefined ? { url: dto.url } : {}),
+      },
+    });
+  }
+
+  async deleteSocialLink(userId: string, linkId: string) {
+    const store = await this.getMyStoreOrFail(userId);
+    const link = await this.prisma.storeSocialLink.findFirst({
+      where: { id: linkId, storeId: store.id },
+    });
+    if (!link) throw new NotFoundException('Red social no encontrada');
+    await this.prisma.storeSocialLink.delete({ where: { id: linkId } });
+    return { message: 'Red social eliminada correctamente' };
   }
 }

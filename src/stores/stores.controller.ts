@@ -1,10 +1,12 @@
-import { Body, Controller, Get, Patch, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import type { JwtUser } from '../common/decorators/current-user.decorator';
+import { CreateSocialLinkDto } from './dto/create-social-link.dto';
 import { CreateStoreDto } from './dto/create-store.dto';
 import { UpdatePaymentMethodDto } from './dto/update-payment-method.dto';
+import { UpdateSocialLinkDto } from './dto/update-social-link.dto';
 import { UpdateStoreDto } from './dto/update-store.dto';
 import { StoresService } from './stores.service';
 
@@ -37,5 +39,23 @@ export class StoresController {
   @ApiOperation({ summary: 'Actualizar o crear metodo de pago de mi tienda' })
   updateStorePaymentMethod(@CurrentUser() user: JwtUser, @Body() dto: UpdatePaymentMethodDto) {
     return this.storesService.updateStorePaymentMethod(user.userId, dto);
+  }
+
+  @Post('me/social-links')
+  @ApiOperation({ summary: 'Agregar red social a mi tienda' })
+  addSocialLink(@CurrentUser() user: JwtUser, @Body() dto: CreateSocialLinkDto) {
+    return this.storesService.addSocialLink(user.userId, dto);
+  }
+
+  @Patch('me/social-links/:id')
+  @ApiOperation({ summary: 'Editar red social de mi tienda' })
+  updateSocialLink(@CurrentUser() user: JwtUser, @Param('id') id: string, @Body() dto: UpdateSocialLinkDto) {
+    return this.storesService.updateSocialLink(user.userId, id, dto);
+  }
+
+  @Delete('me/social-links/:id')
+  @ApiOperation({ summary: 'Eliminar red social de mi tienda' })
+  deleteSocialLink(@CurrentUser() user: JwtUser, @Param('id') id: string) {
+    return this.storesService.deleteSocialLink(user.userId, id);
   }
 }

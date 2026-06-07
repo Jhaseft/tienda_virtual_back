@@ -158,8 +158,20 @@ model Store {
   followers      StoreFollower[]
   paymentMethods StorePaymentMethod[]
   reviews        Review[]
+  socialLinks    StoreSocialLink[]
 
   @@map("stores")
+}
+
+model StoreSocialLink {
+  id      String        @id @default(uuid())
+  storeId String
+  network SocialNetwork
+  url     String
+
+  store Store @relation(fields: [storeId], references: [id])
+
+  @@map("store_social_links")
 }
 
 model StoreFollower {
@@ -196,6 +208,16 @@ enum PaymentType {
   TIGO_MONEY
   EFECTIVO
   TRANSFERENCIA
+}
+
+enum SocialNetwork {
+  FACEBOOK
+  INSTAGRAM
+  TIKTOK
+  YOUTUBE
+  TWITTER
+  WHATSAPP
+  WEBSITE
 }
 
 model Category {
