@@ -8,6 +8,7 @@ import { CreateStoreDto } from './dto/create-store.dto';
 import { UpdatePaymentMethodDto } from './dto/update-payment-method.dto';
 import { UpdateSocialLinkDto } from './dto/update-social-link.dto';
 import { UpdateStoreDto } from './dto/update-store.dto';
+import { UpdateSubdomainDto } from './dto/update-subdomain.dto';
 import { StoresService } from './stores.service';
 
 @ApiTags('stores')
@@ -33,6 +34,12 @@ export class StoresController {
   @ApiOperation({ summary: 'Actualizar configuracion principal de tienda' })
   updateStoreSettings(@CurrentUser() user: JwtUser, @Body() dto: UpdateStoreDto) {
     return this.storesService.updateStoreSettings(user.userId, dto);
+  }
+
+  @Patch('me/subdomain')
+  @ApiOperation({ summary: 'Asignar/actualizar subdominio de mi tienda' })
+  updateStoreSubdomain(@CurrentUser() user: JwtUser, @Body() dto: UpdateSubdomainDto) {
+    return this.storesService.updateStoreSubdomain(user.userId, dto);
   }
 
   @Patch('me/payment-method')

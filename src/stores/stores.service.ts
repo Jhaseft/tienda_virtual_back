@@ -6,6 +6,31 @@ import { CreateStoreDto } from './dto/create-store.dto';
 import { UpdatePaymentMethodDto } from './dto/update-payment-method.dto';
 import { UpdateSocialLinkDto } from './dto/update-social-link.dto';
 import { UpdateStoreDto } from './dto/update-store.dto';
+import { UpdateSubdomainDto } from './dto/update-subdomain.dto';
+
+const RESERVED_SUBDOMAINS = new Set([
+  'www',
+  'api',
+  'admin',
+  'dashboard',
+  'app',
+  'mail',
+  'email',
+  'ftp',
+  'blog',
+  'shop',
+  'tienda',
+  'tiendas',
+  'static',
+  'cdn',
+  'assets',
+  'media',
+  'images',
+  'help',
+  'support',
+  'docs',
+  'status',
+]);
 
 @Injectable()
 export class StoresService {
@@ -73,6 +98,28 @@ export class StoresService {
     });
 
     return this.getMyStoreOrFail(userId, updatedStore.id);
+  }
+
+  async updateStoreSubdomain(userId: string, dto: UpdateSubdomainDto) {
+    const store = await this.getMyStoreOrFail(userId);
+    const subdomain = dto.subdomain.trim().toLowerCase();
+
+    if (RESERVED_SUBDOMAINS.has(subdomain)) {
+      throw new BadRequestException('Ese subdominio está reservado, elige otro.');
+    }
+
+    const taken = await this.prisma.store.findUnique({ where: { subdomain } });
+    if (taken && taken.id !== store.id) {
+      throw new BadRequestException('Ese subdominio ya está en uso por otra tienda.');
+    }
+
+    const updated = await this.prisma.store.update({
+      where: { id: store.id },
+      data: { subdomain },
+      select: { id: true, subdomain: true },
+    });
+
+    return updated;
   }
 
   async updateStorePaymentMethod(userId: string, dto: UpdatePaymentMethodDto) {

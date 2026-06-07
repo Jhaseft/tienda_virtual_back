@@ -187,6 +187,17 @@ export class ExplorarTiendaService {
   }
 
   // OBTENER DETALLE COMPLETO DE UNA TIENDA
+  // RESOLVER SUBDOMINIO -> ID DE TIENDA (lookup público para multi-tenancy)
+  async getStoreIdBySubdomain(subdomain: string) {
+    const clean = subdomain.trim().toLowerCase();
+    const store = await this.prisma.store.findUnique({
+      where: { subdomain: clean },
+      select: { id: true },
+    });
+    if (!store) throw new NotFoundException('Tienda no encontrada');
+    return store;
+  }
+
   async getStoreById(storeId: string) {
     const store = await this.prisma.store.findUnique({
       where: { id: storeId },
