@@ -72,6 +72,13 @@ export class ExplorarTiendaController {
     return this.explorarService.getStorePaymentMethods(id);
   }
 
+  // OBTENER ZONAS DE ENVÍO ACTIVAS DE UNA TIENDA (agrupadas por ciudad)
+  @Get('tiendas/:id/zonas-envio')
+  @ApiOperation({ summary: 'Zonas de envío activas de una tienda agrupadas por ciudad' })
+  getStoreShippingZones(@Param('id') id: string) {
+    return this.explorarService.getPublicShippingZones(id);
+  }
+
   // VERIFICAR SI EL USUARIO SIGUE UNA TIENDA
   @Get('tiendas/:id/seguir')
   @UseGuards(JwtAuthGuard)

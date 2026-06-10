@@ -305,6 +305,31 @@ export class ExplorarTiendaService {
     });
   }
 
+  // OBTENER ZONAS DE ENVÍO ACTIVAS DE UNA TIENDA AGRUPADAS POR CIUDAD
+  async getPublicShippingZones(storeId: string) {
+    const zones = await this.prisma.shippingZone.findMany({
+      where: { storeId, isActive: true },
+      orderBy: [{ city: 'asc' }, { shippingCost: 'asc' }],
+      select: {
+        id: true,
+        city: true,
+        transportType: true,
+        shippingCost: true,
+        minHours: true,
+        maxHours: true,
+      },
+    });
+
+    type ZoneItem = (typeof zones)[number];
+    const grouped: Record<string, ZoneItem[]> = {};
+    for (const zone of zones) {
+      if (!grouped[zone.city]) grouped[zone.city] = [];
+      grouped[zone.city].push(zone);
+    }
+
+    return Object.entries(grouped).map(([city, options]) => ({ city, options }));
+  }
+
   // OBTENER DATOS PARA LA PÁGINA DE INICIO: CATEGORÍAS Y TIENDAS RECOMENDADAS
   async getHomeData() {
     const [categories, recommendedStores] = await Promise.all([this.getCategories(), this.getRecommendedStores()]);

@@ -36,4 +36,9 @@ export class UpdatePaymentMethodDto {
   @IsOptional()
   @IsString()
   qrImagePublicId?: string;
+
+  @ApiPropertyOptional({ example: '76543210' })
+  @IsOptional()
+  @IsString()
+  phoneNumber?: string;
 }

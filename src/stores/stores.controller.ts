@@ -5,18 +5,24 @@ import { CurrentUser } from '../common/decorators/current-user.decorator';
 import type { JwtUser } from '../common/decorators/current-user.decorator';
 import { CreateSocialLinkDto } from './dto/create-social-link.dto';
 import { CreateStoreDto } from './dto/create-store.dto';
+import { CreateShippingZoneDto } from './dto/create-shipping-zone.dto';
+import { UpdateShippingZoneDto } from './dto/update-shipping-zone.dto';
 import { UpdatePaymentMethodDto } from './dto/update-payment-method.dto';
 import { UpdateSocialLinkDto } from './dto/update-social-link.dto';
 import { UpdateStoreDto } from './dto/update-store.dto';
 import { UpdateSubdomainDto } from './dto/update-subdomain.dto';
 import { StoresService } from './stores.service';
+import { ShippingZonesService } from './shipping-zones.service';
 
 @ApiTags('stores')
 @ApiBearerAuth('access-token')
 @UseGuards(JwtAuthGuard)
 @Controller('stores')
 export class StoresController {
-  constructor(private readonly storesService: StoresService) {}
+  constructor(
+    private readonly storesService: StoresService,
+    private readonly shippingZonesService: ShippingZonesService,
+  ) {}
 
   @Post()
   @ApiOperation({ summary: 'Crear mi tienda' })
@@ -48,6 +54,12 @@ export class StoresController {
     return this.storesService.updateStorePaymentMethod(user.userId, dto);
   }
 
+  @Delete('me/payment-method/:id')
+  @ApiOperation({ summary: 'Eliminar metodo de pago de mi tienda' })
+  deletePaymentMethod(@CurrentUser() user: JwtUser, @Param('id') id: string) {
+    return this.storesService.deletePaymentMethod(user.userId, id);
+  }
+
   @Post('me/social-links')
   @ApiOperation({ summary: 'Agregar red social a mi tienda' })
   addSocialLink(@CurrentUser() user: JwtUser, @Body() dto: CreateSocialLinkDto) {
@@ -64,5 +76,29 @@ export class StoresController {
   @ApiOperation({ summary: 'Eliminar red social de mi tienda' })
   deleteSocialLink(@CurrentUser() user: JwtUser, @Param('id') id: string) {
     return this.storesService.deleteSocialLink(user.userId, id);
+  }
+
+  @Get('me/shipping-zones')
+  @ApiOperation({ summary: 'Listar zonas de envío de mi tienda' })
+  getMyShippingZones(@CurrentUser() user: JwtUser) {
+    return this.shippingZonesService.getMyShippingZones(user.userId);
+  }
+
+  @Post('me/shipping-zones')
+  @ApiOperation({ summary: 'Crear zona de envío' })
+  createShippingZone(@CurrentUser() user: JwtUser, @Body() dto: CreateShippingZoneDto) {
+    return this.shippingZonesService.createShippingZone(user.userId, dto);
+  }
+
+  @Patch('me/shipping-zones/:id')
+  @ApiOperation({ summary: 'Editar zona de envío' })
+  updateShippingZone(@CurrentUser() user: JwtUser, @Param('id') id: string, @Body() dto: UpdateShippingZoneDto) {
+    return this.shippingZonesService.updateShippingZone(user.userId, id, dto);
+  }
+
+  @Delete('me/shipping-zones/:id')
+  @ApiOperation({ summary: 'Eliminar zona de envío' })
+  deleteShippingZone(@CurrentUser() user: JwtUser, @Param('id') id: string) {
+    return this.shippingZonesService.deleteShippingZone(user.userId, id);
   }
 }

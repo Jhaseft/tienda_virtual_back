@@ -17,6 +17,9 @@ import { SystemConfigModule } from './system-config/system-config.module';
 import { UploadsModule } from './uploads/uploads.module';
 import { UsersModule } from './users/users.module';
 import { WhatsappModule } from './whatsapp/whatsapp.module';
+import { AddressesModule } from './addresses/addresses.module';
+import { PedidosModule } from './pedidos/pedidos.module';
+import { CarritoModule } from './carrito/carrito.module';
 
 @Module({
   imports: [
@@ -41,6 +44,9 @@ import { WhatsappModule } from './whatsapp/whatsapp.module';
     StripeModule,
     BanecoQrModule,
     UploadsModule,
+    AddressesModule,
+    PedidosModule,
+    CarritoModule,
   ],
   controllers: [],
   providers: [],

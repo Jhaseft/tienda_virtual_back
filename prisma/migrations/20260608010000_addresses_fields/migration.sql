@@ -1,0 +1,10 @@
+-- AddressesFields: state, zipCode, country, createdAt, updatedAt, fullName, phone
+
+ALTER TABLE "addresses"
+  ADD COLUMN IF NOT EXISTS "state"     TEXT,
+  ADD COLUMN IF NOT EXISTS "zipCode"   TEXT,
+  ADD COLUMN IF NOT EXISTS "country"   TEXT NOT NULL DEFAULT 'Bolivia',
+  ADD COLUMN IF NOT EXISTS "fullName"  TEXT,
+  ADD COLUMN IF NOT EXISTS "phone"     TEXT,
+  ADD COLUMN IF NOT EXISTS "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  ADD COLUMN IF NOT EXISTS "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP;

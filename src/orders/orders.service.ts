@@ -99,9 +99,28 @@ export class OrdersService {
         total: true,
         voucherUrl: true,
         whatsappThreadUrl: true,
+        pickupMethod: true,
         notes: true,
         createdAt: true,
         updatedAt: true,
+        address: {
+          select: {
+            fullName: true,
+            street: true,
+            city: true,
+            state: true,
+            phone: true,
+          },
+        },
+        shippingZone: {
+          select: {
+            city: true,
+            transportType: true,
+            minHours: true,
+            maxHours: true,
+            shippingCost: true,
+          },
+        },
         store: {
           select: {
             id: true,
@@ -218,7 +237,31 @@ export class OrdersService {
         },
         items: {
           include: {
-            product: { select: { id: true, name: true } },
+            product: {
+              select: {
+                id: true,
+                name: true,
+                photos: { take: 1, orderBy: { order: 'asc' }, select: { url: true } },
+              },
+            },
+          },
+        },
+        address: {
+          select: {
+            fullName: true,
+            street: true,
+            city: true,
+            state: true,
+            phone: true,
+          },
+        },
+        shippingZone: {
+          select: {
+            city: true,
+            transportType: true,
+            minHours: true,
+            maxHours: true,
+            shippingCost: true,
           },
         },
       },

@@ -116,6 +116,7 @@ model User {
   orders         Order[]
   favorites      Favorite[]
   addresses      Address[]
+  cartItems      CartItem[]
   paymentMethods UserPaymentMethod[]
   reviews        Review[]
   following      StoreFollower[]
@@ -160,8 +161,53 @@ model Store {
   paymentMethods StorePaymentMethod[]
   reviews        Review[]
   socialLinks    StoreSocialLink[]
+  shippingZones  ShippingZone[]
+  cartItems      CartItem[]
 
   @@map("stores")
+}
+
+model ShippingZone {
+  id            String        @id @default(uuid())
+  storeId       String
+  city          String
+  transportType TransportType
+  shippingCost  Float
+  minHours      Int
+  maxHours      Int
+  isActive      Boolean       @default(true)
+
+  store  Store   @relation(fields: [storeId], references: [id])
+  orders Order[]
+
+  @@unique([storeId, city, transportType])
+  @@map("shipping_zones")
+}
+
+enum TransportType {
+  BUS
+  AVION
+  MOTO
+  A_PIE
+  PROPIO
+  EXPRESS
+}
+
+model CartItem {
+  id        String   @id @default(uuid())
+  userId    String
+  storeId   String
+  productId String
+  quantity  Int      @default(1)
+  variant   String?
+  colorName String?
+  createdAt DateTime @default(now())
+
+  user    User    @relation(fields: [userId], references: [id])
+  store   Store   @relation(fields: [storeId], references: [id])
+  product Product @relation(fields: [productId], references: [id])
+
+  @@map("cart_items")
 }
 
 model StoreSocialLink {
@@ -195,6 +241,7 @@ model StorePaymentMethod {
   bankName        String?
   accountHolder   String?
   accountNumber   String?
+  phoneNumber     String?
   qrImageUrl      String?
   qrImagePublicId String?
 
@@ -209,6 +256,7 @@ enum PaymentType {
   TIGO_MONEY
   EFECTIVO
   TRANSFERENCIA
+  WHATSAPP
 }
 
 enum SocialNetwork {
@@ -251,6 +299,7 @@ model Product {
   colors     ProductColor[]
   orderItems OrderItem[]
   favorites  Favorite[]
+  cartItems  CartItem[]
 
   @@map("products")
 }
@@ -297,7 +346,10 @@ model Order {
   storeId           String
   status            OrderStatus @default(PENDING)
   paymentMethod     PaymentType
+  pickupMethod      PickupMethod?
   deliveryAddress   String?
+  addressId         String?
+  shippingZoneId    String?
   subtotal          Float
   shippingCost      Float       @default(0)
   total             Float
@@ -308,12 +360,19 @@ model Order {
   createdAt         DateTime    @default(now())
   updatedAt         DateTime    @updatedAt
 
-  client User        @relation(fields: [clientId], references: [id])
-  store  Store       @relation(fields: [storeId], references: [id])
-  items  OrderItem[]
-  review Review?
+  client       User          @relation(fields: [clientId], references: [id])
+  store        Store         @relation(fields: [storeId], references: [id])
+  address      Address?      @relation(fields: [addressId], references: [id])
+  shippingZone ShippingZone? @relation(fields: [shippingZoneId], references: [id])
+  items        OrderItem[]
+  review       Review?
 
   @@map("orders")
+}
+
+enum PickupMethod {
+  WHATSAPP
+  STORE_PICKUP
 }
 
 model OrderItem {
@@ -332,12 +391,12 @@ model OrderItem {
 }
 
 enum OrderStatus {
-  PENDING
-  CONFIRMED
-  PAID
-  SHIPPED
-  DELIVERED
-  CANCELLED
+  PENDING // PENDIENTE
+  CONFIRMED // CONFIRMADO
+  PAID// PAGADO
+  SHIPPED // ENVIADO
+  DELIVERED // ENTREGADO
+  CANCELLED // CANCELADO
 }
 
 model Review {
@@ -373,15 +432,23 @@ model Favorite {
 }
 
 model Address {
-  id        String  @id @default(uuid())
+  id        String   @id @default(uuid())
   userId    String
+  fullName  String?
+  phone     String?
   label     String?
   street    String
   city      String
+  state     String?
+  zipCode   String?
+  country   String   @default("Bolivia")
   reference String?
-  isDefault Boolean @default(false)
+  isDefault Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  user User @relation(fields: [userId], references: [id])
+  user   User    @relation(fields: [userId], references: [id])
+  orders Order[]
 
   @@map("addresses")
 }
