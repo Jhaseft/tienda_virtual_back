@@ -195,9 +195,9 @@ export class MessagesGateway implements OnGatewayDisconnect {
         senderRole,
       );
 
-      // Emitir a ambos participantes
+      // Emitir al vendor (store room) y al cliente (user room)
       this.server.to(`store_${message.storeId}`).emit('new_message', message);
-      this.server.to(`user_${socketUser.userId}`).emit('new_message', message);
+      this.server.to(`user_${message.clientId}`).emit('new_message', message);
 
       client.emit('message_sent', message);
     } catch (error: any) {

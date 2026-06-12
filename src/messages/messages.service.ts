@@ -121,7 +121,7 @@ export class MessagesService {
       data: { updatedAt: new Date() },
     });
 
-    return { ...message, conversationId, storeId: conversation.storeId };
+    return { ...message, conversationId, storeId: conversation.storeId, clientId: conversation.clientId };
   }
 
   // METODO PARA OBTENER LOS MENSAJES DE UNA CONVERSACION ESPECIFICA, CON VALIDACION DE ACCESO
