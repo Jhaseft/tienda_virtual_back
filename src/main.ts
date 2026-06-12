@@ -1,4 +1,5 @@
 import { NestFactory } from '@nestjs/core';
+import { IoAdapter } from '@nestjs/platform-socket.io';
 import { AppModule } from './app.module';
 import { ValidationPipe, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -25,6 +26,9 @@ async function bootstrap() {
 
     next();
   });
+
+  // Socket.IO adapter con CORS
+  app.useWebSocketAdapter(new IoAdapter(app));
 
   //  Configurar CORS desde variables de entorno
   app.enableCors({

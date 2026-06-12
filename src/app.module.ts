@@ -20,6 +20,7 @@ import { WhatsappModule } from './whatsapp/whatsapp.module';
 import { AddressesModule } from './addresses/addresses.module';
 import { PedidosModule } from './pedidos/pedidos.module';
 import { CarritoModule } from './carrito/carrito.module';
+import { MessagesModule } from './messages/messages.module';
 
 @Module({
   imports: [
@@ -28,6 +29,7 @@ import { CarritoModule } from './carrito/carrito.module';
       envFilePath: '.env',
     }),
     PrismaModule,
+    MessagesModule,
     WhatsappModule,
     MailModule,
     AuthModule,

@@ -226,7 +226,10 @@ export class ExplorarTiendaService {
           select: { id: true, network: true, url: true },
         },
         subscription: {
-          select: { status: true },
+          select: {
+            status: true,
+            plan: { select: { hasChat: true } },
+          },
         },
       },
     });
@@ -241,9 +244,11 @@ export class ExplorarTiendaService {
       throw new ForbiddenException('Esta tienda no está disponible actualmente');
     }
 
+    const hasChat = store.subscription?.status === 'ACTIVE' ? (store.subscription.plan?.hasChat ?? false) : true;
+
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { trialEndsAt: _t, subscription: _s, ...storeData } = store;
-    return storeData;
+    return { ...storeData, hasChat };
   }
 
   // OBTENER PRODUCTOS DE UNA TIENDA CON PAGINACIÓN

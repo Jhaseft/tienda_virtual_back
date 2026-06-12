@@ -225,6 +225,7 @@ export class SubscriptionsService {
         canAddPaymentMethods: plan.canAddPaymentMethods,
         hasAiAgent: plan.hasAiAgent,
         hasAdvancedPayments: plan.hasAdvancedPayments,
+        hasChat: plan.hasChat,
         plan: planDetail(plan),
       };
     }
@@ -240,6 +241,7 @@ export class SubscriptionsService {
         canAddPaymentMethods: false,
         hasAiAgent: false,
         hasAdvancedPayments: false,
+        hasChat: true,
         plan: null,
       };
     }
@@ -254,6 +256,7 @@ export class SubscriptionsService {
       canAddPaymentMethods: false,
       hasAiAgent: false,
       hasAdvancedPayments: false,
+      hasChat: false,
       plan: subscription ? planDetail(subscription.plan) : null,
     };
   }
