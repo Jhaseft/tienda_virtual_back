@@ -2,12 +2,21 @@ import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { MessageRole } from '@prisma/client';
 import { PrismaService } from '../prisma.service';
+import { UploadsService } from '../uploads/uploads.service';
 
 @Injectable()
 export class MessagesService {
   private readonly logger = new Logger(MessagesService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly uploadsService: UploadsService,
+  ) {}
+
+  async uploadMultimedia(file: Express.Multer.File | undefined): Promise<{ multimediaUrl: string; multimediaPublicId: string }> {
+    const result = await this.uploadsService.uploadFile(file, 'chat');
+    return { multimediaUrl: result.url, multimediaPublicId: result.publicId };
+  }
 
   // METODO PARA CALCULAR EL CORTE DE TIEMPO DE LOS MENSAJES SEGUN LA CONFIGURACION (72 HORAS POR DEFECTO)
   private ttlCutoff(): Date {
@@ -32,13 +41,15 @@ export class MessagesService {
   async createMessage(
     senderId: string,
     storeId: string,
-    text: string,
+    text: string | undefined,
     senderRole: MessageRole,
     clientId?: string,
+    multimediaUrl?: string,
+    multimediaPublicId?: string,
   ) {
-    const messageText = text?.trim();
-    if (!messageText) {
-      throw new BadRequestException('El mensaje no puede estar vacío.');
+    const messageText = text?.trim() || undefined;
+    if (!messageText && !multimediaUrl) {
+      throw new BadRequestException('El mensaje debe tener texto o multimedia.');
     }
 
     const store = await this.prisma.store.findUnique({
@@ -74,6 +85,8 @@ export class MessagesService {
         senderId,
         senderRole,
         text: messageText,
+        multimediaUrl,
+        multimediaPublicId,
       },
     });
 
@@ -84,12 +97,14 @@ export class MessagesService {
   async replyMessage(
     senderId: string,
     conversationId: string,
-    text: string,
+    text: string | undefined,
     senderRole: MessageRole,
+    multimediaUrl?: string,
+    multimediaPublicId?: string,
   ) {
-    const messageText = text?.trim();
-    if (!messageText) {
-      throw new BadRequestException('El mensaje no puede estar vacío.');
+    const messageText = text?.trim() || undefined;
+    if (!messageText && !multimediaUrl) {
+      throw new BadRequestException('El mensaje debe tener texto o multimedia.');
     }
 
     const conversation = await this.prisma.conversation.findUnique({
@@ -113,6 +128,8 @@ export class MessagesService {
         senderId,
         senderRole,
         text: messageText,
+        multimediaUrl,
+        multimediaPublicId,
       },
     });
 
@@ -141,7 +158,7 @@ export class MessagesService {
     return this.prisma.message.findMany({
       where: { conversationId, createdAt: { gte: this.ttlCutoff() } },
       orderBy: { createdAt: 'asc' },
-      select: { id: true, conversationId: true, senderId: true, senderRole: true, text: true, read: true, createdAt: true },
+      select: { id: true, conversationId: true, senderId: true, senderRole: true, text: true, multimediaUrl: true, read: true, createdAt: true },
     });
   }
 

@@ -1,4 +1,5 @@
-import { Body, Controller, Get, Post, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Post, Query, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { MessageRole } from '@prisma/client';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
@@ -67,6 +68,15 @@ export class MessagesController {
   ) {
     const role = roleParam === 'VENDOR' ? 'VENDOR' : roleParam === 'CLIENT' ? 'CLIENT' : user.role === 'VENDOR' ? 'VENDOR' : 'CLIENT';
     return this.messagesService.getChats(user.userId, role);
+  }
+
+  // POST /messages/upload-multimedia — subir imagen/video antes de enviar el mensaje
+  @Post('upload-multimedia')
+  @UseInterceptors(FileInterceptor('file'))
+  uploadMultimedia(
+    @UploadedFile() file: Express.Multer.File,
+  ) {
+    return this.messagesService.uploadMultimedia(file);
   }
 
   // POST /messages/read — marcar mensajes como leídos

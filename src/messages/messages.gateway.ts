@@ -137,14 +137,14 @@ export class MessagesGateway implements OnGatewayDisconnect {
   // Cliente inicia una conversación con una tienda
   @SubscribeMessage('send_message')
   async handleSendMessage(
-    @MessageBody() data: { storeId: string; text: string; clientId?: string },
+    @MessageBody() data: { storeId: string; text?: string; clientId?: string; multimediaUrl?: string; multimediaPublicId?: string },
     @ConnectedSocket() client: Socket,
   ) {
     const socketUser = await this.getRequiredSocketUser(client);
     if (!socketUser) return;
 
-    if (!data?.storeId || !data?.text) {
-      client.emit('message_error', { message: 'Faltan datos: storeId y text son requeridos.' });
+    if (!data?.storeId || (!data?.text && !data?.multimediaUrl)) {
+      client.emit('message_error', { message: 'Faltan datos: storeId y text o multimedia son requeridos.' });
       return;
     }
 
@@ -157,6 +157,8 @@ export class MessagesGateway implements OnGatewayDisconnect {
         data.text,
         senderRole,
         data.clientId,
+        data.multimediaUrl,
+        data.multimediaPublicId,
       );
 
       // Determinar el clientId real para emitir a su room
@@ -174,14 +176,14 @@ export class MessagesGateway implements OnGatewayDisconnect {
   // Vendor o cliente responden en una conversación existente
   @SubscribeMessage('reply_message')
   async handleReplyMessage(
-    @MessageBody() data: { conversationId: string; text: string },
+    @MessageBody() data: { conversationId: string; text?: string; multimediaUrl?: string; multimediaPublicId?: string },
     @ConnectedSocket() client: Socket,
   ) {
     const socketUser = await this.getRequiredSocketUser(client);
     if (!socketUser) return;
 
-    if (!data?.conversationId || !data?.text) {
-      client.emit('message_error', { message: 'Faltan datos: conversationId y text son requeridos.' });
+    if (!data?.conversationId || (!data?.text && !data?.multimediaUrl)) {
+      client.emit('message_error', { message: 'Faltan datos: conversationId y text o multimedia son requeridos.' });
       return;
     }
 
@@ -193,6 +195,8 @@ export class MessagesGateway implements OnGatewayDisconnect {
         data.conversationId,
         data.text,
         senderRole,
+        data.multimediaUrl,
+        data.multimediaPublicId,
       );
 
       // Emitir al vendor (store room) y al cliente (user room)

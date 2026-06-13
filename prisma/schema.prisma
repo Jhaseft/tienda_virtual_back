@@ -500,7 +500,9 @@ model Message {
   conversationId String
   senderId       String
   senderRole     MessageRole
-  text           String
+  text           String?
+  multimediaUrl  String?
+  multimediaPublicId String?
   read           Boolean      @default(false)
   createdAt      DateTime     @default(now())
 

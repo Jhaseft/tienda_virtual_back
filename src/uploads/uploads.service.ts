@@ -242,6 +242,40 @@ export class UploadsService {
     return { voucherUrl: body.secure_url };
   }
 
+  async uploadFile(file: Express.Multer.File | undefined, folder: string): Promise<{ url: string; publicId: string }> {
+    if (!file) throw new BadRequestException('Debes enviar un archivo');
+
+    const cloudinaryUrl = this.config.get<string>('CLOUDINARY_URL');
+    if (!cloudinaryUrl?.startsWith('cloudinary://')) {
+      throw new BadRequestException('Cloudinary no configurado.');
+    }
+
+    const { cloudName, apiKey, apiSecret } = this.parseCloudinaryUrl(cloudinaryUrl);
+    const timestamp = Math.floor(Date.now() / 1000);
+    const signature = createHash('sha1').update(`folder=${folder}&timestamp=${timestamp}${apiSecret}`).digest('hex');
+
+    const formData = new FormData();
+    formData.append('file', new Blob([new Uint8Array(file.buffer)], { type: file.mimetype }), file.originalname);
+    formData.append('api_key', apiKey);
+    formData.append('timestamp', String(timestamp));
+    formData.append('folder', folder);
+    formData.append('signature', signature);
+
+    const resourceType = file.mimetype.startsWith('video/') ? 'video' : 'image';
+    const response = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/${resourceType}/upload`, {
+      method: 'POST',
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const errorBody = await response.text();
+      throw new BadRequestException(`Error al subir archivo: ${errorBody}`);
+    }
+
+    const body = (await response.json()) as { secure_url: string; public_id: string };
+    return { url: body.secure_url, publicId: body.public_id };
+  }
+
   private parseCloudinaryUrl(cloudinaryUrl: string) {
     const stripped = cloudinaryUrl.replace('cloudinary://', '');
     const [credentials, cloudName] = stripped.split('@');
