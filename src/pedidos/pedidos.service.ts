@@ -1,22 +1,44 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma.service';
 import { CreatePedidoDto } from './dto/create-pedido.dto';
-
+import { MailService } from '../mail/mail.service';
+import { NotificationsService } from '../notifications/notifications.service';
 @Injectable()
 export class PedidosService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly mailService: MailService,
+    private readonly notificationsService: NotificationsService,
+  ) { }
 
   // METODO PARA CREAR UN PEDIDO, CON VALIDACIONES DE TIENDA, DIRECCIÓN, ZONA DE ENVÍO, PRODUCTOS Y STOCK, TODO EN UNA TRANSACCIÓN
   async createPedido(userId: string, dto: CreatePedidoDto) {
     // 1. Validar que la tienda existe
     const store = await this.prisma.store.findUnique({
       where: { id: dto.storeId },
-      select: { id: true, name: true },
+      select: {
+        id: true,
+        name: true,
+        owner: {
+          select: {
+            id: true,
+            email: true,
+            firstName: true,
+            lastName: true,
+          },
+        },
+      },
     });
     if (!store) throw new NotFoundException('Tienda no encontrada');
 
     // 2. Validar que la dirección pertenece al usuario
-    const address = await this.prisma.address.findUnique({ where: { id: dto.addressId } });
+    const [address, client] = await Promise.all([
+      this.prisma.address.findUnique({ where: { id: dto.addressId } }),
+      this.prisma.user.findUnique({
+        where: { id: userId },
+        select: { firstName: true, lastName: true },
+      }),
+    ]);
     if (!address || address.userId !== userId) {
       throw new NotFoundException('Dirección no encontrada');
     }
@@ -109,6 +131,33 @@ export class PedidosService {
 
       return created;
     });
+
+    if (store.owner.email) {
+      this.mailService
+        .sendNewOrderToSeller(store.owner.email, {
+          orderSeq: order.orderSeq,
+          storeName: store.name,
+          clientName: `${client?.firstName ?? ''} ${client?.lastName ?? ''}`.trim() || 'Cliente',
+          total: order.total,
+          paymentMethod: dto.paymentMethod,
+          items: order.items.map((i) => ({
+            name: i.product.name,
+            quantity: i.quantity,
+            unitPrice: i.unitPrice,
+          })),
+        })
+        .catch((err) => console.error('Error enviando correo de nuevo pedido:', err));
+    }
+
+    const tokens = await this.notificationsService.getTokensByUser(store.owner.id);
+    this.notificationsService
+      .sendMulticastNotification(
+        tokens,
+        'Nuevo pedido',
+        `Pedido #${order.orderSeq} - Bs ${order.total}`,
+        { orderId: order.id, type: 'NEW_ORDER' },
+      )
+      .catch((err) => console.error('Error push nuevo pedido:', err));
 
     return order;
   }

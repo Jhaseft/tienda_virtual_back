@@ -123,8 +123,20 @@ model User {
   reviews        Review[]
   following      StoreFollower[]
   conversations  Conversation[]
+  fcmTokens      FcmToken[]
 
   @@map("users")
+}
+
+model FcmToken {
+  id        String   @id @default(uuid())
+  userId    String
+  token     String   @unique
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("fcm_tokens")
 }
 
 enum UserRole {

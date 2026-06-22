@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Actualización de tu pedido</title>
+</head>
+<body style="margin:0; padding:24px; background:#ffffff; font-family: Arial, sans-serif; color:#333333;">
+  <div style="max-width:480px; margin:0 auto;">
+    <h2 style="font-size:18px; color:#111111; margin:0 0 16px;">Tu pedido fue actualizado</h2>
+
+    <p style="font-size:14px; line-height:1.6; margin:0 0 16px;">
+      Hola {{clientName}}, el estado de tu pedido #{{orderSeq}} en <strong>{{storeName}}</strong> cambió a:
+    </p>
+
+    <p style="font-size:16px; color:#111111; margin:0 0 16px;"><strong>{{statusLabel}}</strong></p>
+
+    <p style="font-size:14px; line-height:1.8; margin:0 0 16px;">
+      <strong>Fecha:</strong> {{date}}<br />
+      <strong>Tienda:</strong> {{storeName}}
+    </p>
+
+    <p style="font-size:14px; margin:0 0 8px;"><strong>Productos:</strong></p>
+    <ul style="font-size:14px; line-height:1.8; margin:0 0 16px; padding-left:20px;">
+      {{#each items}}
+      <li>{{this.name}} (x{{this.quantity}}) — Bs {{this.unitPrice}}</li>
+      {{/each}}
+    </ul>
+
+    <p style="font-size:15px; margin:0 0 24px;"><strong>Total: Bs {{total}}</strong></p>
+
+    <p style="font-size:12px; color:#999999; margin:0;">MiTienda</p>
+  </div>
+</body>
+</html>

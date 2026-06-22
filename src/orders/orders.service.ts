@@ -3,6 +3,8 @@ import { OrderStatus, Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma.service';
 import { GetOrdersDto } from './dto/get-orders.dto';
 import { OrderQueryDto } from './dto/order-query.dto';
+import { MailService } from '../mail/mail.service';
+import { NotificationsService } from '../notifications/notifications.service';
 
 const STATUS_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
   PENDING: [OrderStatus.PAID, OrderStatus.CANCELLED],
@@ -15,7 +17,11 @@ const STATUS_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
 
 @Injectable()
 export class OrdersService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly mailService: MailService,
+    private readonly prisma: PrismaService,
+    private readonly notificationsService: NotificationsService,
+  ) { }
 
   // ── Cliente: ver sus propios pedidos ─────────────────────────────────
 
@@ -173,13 +179,13 @@ export class OrdersService {
       ...(query.status ? { status: query.status } : {}),
       ...(trimmedSearch
         ? {
-            OR: [
-              { client: { firstName: { contains: trimmedSearch, mode: 'insensitive' } } },
-              { client: { lastName: { contains: trimmedSearch, mode: 'insensitive' } } },
-              { client: { phoneNumber: { contains: trimmedSearch, mode: 'insensitive' } } },
-              ...(Number.isNaN(Number(trimmedSearch)) ? [] : [{ orderSeq: Number(trimmedSearch) }]),
-            ],
-          }
+          OR: [
+            { client: { firstName: { contains: trimmedSearch, mode: 'insensitive' } } },
+            { client: { lastName: { contains: trimmedSearch, mode: 'insensitive' } } },
+            { client: { phoneNumber: { contains: trimmedSearch, mode: 'insensitive' } } },
+            ...(Number.isNaN(Number(trimmedSearch)) ? [] : [{ orderSeq: Number(trimmedSearch) }]),
+          ],
+        }
         : {}),
     };
 
@@ -272,12 +278,28 @@ export class OrdersService {
     return order;
   }
 
+  // METODO PARA ACTUALIZAR EL ESTADO DEL PEDIDO DESDE EL PANEL DE ADMINISTRACIÓN DE LA TIENDA
   async updateAdminOrderStatus(userId: string, orderId: string, nextStatus: OrderStatus) {
     const store = await this.getOwnedStore(userId);
 
     const order = await this.prisma.order.findFirst({
       where: { id: orderId, storeId: store.id },
-      select: { id: true, status: true },
+      select: {
+        id: true,
+        status: true,
+        orderSeq: true,
+        total: true,
+        paymentMethod: true,
+        client: { select: { id: true, email: true, firstName: true, lastName: true } },
+        store: { select: { name: true } },
+        items: {
+          select: {
+            quantity: true,
+            unitPrice: true,
+            product: { select: { name: true } },
+          },
+        },
+      },
     });
 
     if (!order) throw new NotFoundException('Pedido no encontrado');
@@ -291,14 +313,55 @@ export class OrdersService {
       throw new BadRequestException(`No se puede cambiar de ${order.status} a ${nextStatus}`);
     }
 
-    await this.prisma.order.update({
-      where: { id: order.id },
-      data: { status: nextStatus },
-    });
+    await this.prisma.$transaction([
+      this.prisma.order.update({
+        where: { id: order.id },
+        data: { status: nextStatus },
+      }),
+      ...(nextStatus === OrderStatus.DELIVERED
+        ? [this.prisma.store.update({
+          where: { id: store.id },
+          data: { totalSales: { increment: 1 } },
+        })]
+        : []),
+    ]);
+
+    if (order.client.email) {
+      this.mailService
+        .sendOrderStatusToClient(
+          order.client.email,
+          {
+            orderSeq: order.orderSeq,
+            storeName: order.store.name,
+            clientName: `${order.client.firstName ?? ''} ${order.client.lastName ?? ''}`.trim() || 'Cliente',
+            total: order.total,
+            paymentMethod: order.paymentMethod,
+            items: order.items.map((i) => ({
+              name: i.product.name,
+              quantity: i.quantity,
+              unitPrice: i.unitPrice,
+            })),
+          },
+          nextStatus,
+        )
+        .catch(() => { });
+    }
+
+    const tokens = await this.notificationsService.getTokensByUser(order.client.id);
+    this.notificationsService
+      .sendMulticastNotification(
+        tokens,
+        'Pedido actualizado',
+        `Tu pedido #${order.orderSeq}: ${nextStatus}`,
+        { orderId: order.id, type: 'ORDER_STATUS' },
+      )
+      .catch((err) => console.error('Error push estado:', err));
+
 
     return this.getAdminOrderById(userId, orderId);
   }
 
+  // METODO PRIVADO PARA OBTENER LA TIENDA ASOCIADA AL USUARIO (PARA VALIDAR QUE TIENE PERMISO DE ADMINISTRACION)
   private async getOwnedStore(userId: string) {
     const store = await this.prisma.store.findUnique({
       where: { ownerId: userId },

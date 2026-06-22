@@ -40,14 +40,8 @@ export default tseslint.config(
       '@typescript-eslint/no-floating-promises': 'warn',
       '@typescript-eslint/no-unsafe-argument': 'warn',
 
-      // Prettier NO rompe imports
-      'prettier/prettier': [
-        'warn',
-        {
-          endOfLine: 'auto',
-          printWidth: 120,
-        },
-      ],
+      // Prettier desactivado (sin warnings de formato)
+      'prettier/prettier': 'off',
     },
   },
 );

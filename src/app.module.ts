@@ -21,7 +21,7 @@ import { AddressesModule } from './addresses/addresses.module';
 import { PedidosModule } from './pedidos/pedidos.module';
 import { CarritoModule } from './carrito/carrito.module';
 import { MessagesModule } from './messages/messages.module';
-
+import { NotificationsModule } from './notifications/notifications.module';
 @Module({
   imports: [
     ConfigModule.forRoot({
@@ -49,6 +49,7 @@ import { MessagesModule } from './messages/messages.module';
     AddressesModule,
     PedidosModule,
     CarritoModule,
+    NotificationsModule,
   ],
   controllers: [],
   providers: [],
